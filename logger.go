@@ -37,12 +37,13 @@ type Logger struct {
 	// ALogger implements just enough log.Logger interface to be compatible with other implementations
 	ALogger
 	dateFormat string
+	SkipPathes []string
 	template   *template.Template
 }
 
 // NewLogger returns a new Logger instance
-func NewLogger() *Logger {
-	logger := &Logger{ALogger: log.New(os.Stdout, "[negroni] ", 0), dateFormat: LoggerDefaultDateFormat}
+func NewLogger(skipPaths ...string) *Logger {
+	logger := &Logger{SkipPathes: skipPaths, ALogger: log.New(os.Stdout, "[negroni] ", 0), dateFormat: LoggerDefaultDateFormat}
 	logger.SetFormat(LoggerDefaultFormat)
 	return logger
 }
@@ -57,8 +58,13 @@ func (l *Logger) SetDateFormat(format string) {
 
 func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
-
 	next(rw, r)
+
+	for _, sp := range l.SkipPathes {
+		if sp == r.URL.Path {
+			return
+		}
+	}
 
 	res := rw.(ResponseWriter)
 	log := LoggerEntry{
